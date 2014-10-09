@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Home</title>
+
+<body>
+<form action="" method=post enctype=multipart/form-data>
+{% if organisms %}
+<select name="selectorg">
+  {% for organism in organisms %}
+  <option name="option" value="{{organism}}">{{organism}}</option><br>
+  {% endfor %}
+</select>
+  {% endif %}<br>
+  <input type="submit" name="submit" id="button" value="Displays"/><br><br><br><br>
+</form>
+</body>
+</html>

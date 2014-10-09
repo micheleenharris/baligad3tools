@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+          <meta charset="utf-8">
+
+<script charset="utf-8" type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+<!--<script type="text/javascript" src="{{ url_for('static', filename='jquery.tipsy.js') }}"></script>-->
+
+<style type="text/css">
+            .legend {
+              padding: 5px;
+              font: 10px sans-serif;
+              background: yellow;
+              box-shadow: 2px 2px 1px #888;
+            }
+</style>
+
+<style type="text/css">
+            .ylabel {
+              padding: 5px;
+              font: 5px sans-serif;
+              
+            }
+</style>
+
+<title>Gene log ratios measured over different conditions</title>
+</head>
+
+<body>
+<h3>Gene log ratios measured over different conditions</h3>
+
+<p id="loading">[Loading...]</p>
+
+<div id="curvesfig"></div>
+
+<div id="legend" style="width:700px;margin-left:25px;opacity:0;">
+
+<p>The top panel is an image plot of genes, measured over various conditions.  The rows correspond to genes.
+There is a color scale at the bottom right.
+
+<p>Click on a row to see the condition curve below.
+
+<p>Click on a row and the curve below will be retained as you move
+away.  Click again (if you can get your pointer onto it) and it will
+be removed.
+
+</div>
+
+<!--<script type="text/javascript">
+
+  //  Import label information from the js file and append to document
+var script   = document.createElement("script");
+script.type  = "text/javascript";
+script.src   = "{{ url_for('static', filename='') }}"+"d3lineplot.js";
+document.body.appendChild(script);
+</script>-->
+
+<script type="text/javascript">
+var jsonname = "{{ url_for('static', filename='') }}"+"datafiles/{{organism}}/lineplot_files/{{cluster}}";
+  d3.json(jsonname, draw);
+
+function draw(data) {
+    var altpink, avePhe, botAxes, botyTicks, clickColors, clickCurve, clicked, colorseq, curInd, curve, darkBlue, darkGray, darkRed, dif, difdown, drawCurve, h, i, image, imgPixels, indexInd, j, labelcolor, lightGray, maincolor, maxPhe, minPhe, nInd, nTimes, n_colors, nodig, onedig, orderedInd, pad, phe, phecurve, phenoList, pink, pixelsPer, purple, randomInd, redblue, svg, titlecolor, topAxes, topyTicks, totalh, totalw, twodig, w, xPos, xScaleCurve, xScaleImg, xTicks, xloc, yScaleCurve, yScaleImg, yVals, yloc, zScaleImg, _i, _j, _k, _l, _len, _len1, _ref, _ref1, _results, _results1;
+
+
+    // Radio button(s)
+    var radioData = ["Select All", "Select None"], j = 2;
+
+    var form = d3.select("body").append("form");
+
+    var labelEnter = form.selectAll("span")
+    .data(radioData)
+    .enter().append("span");
+
+    labelEnter.append("input")
+        .attr({
+            type: "radio",
+            class: "shape",
+            name: "mode",
+            value: function(d, i) {return i;}
+        })
+        .property("checked", function(d, i) { 
+            return (i===j); 
+        });
+
+    labelEnter.append("label").text(function(d) {return d;});
+
+    d3.select("p#loading").remove();
+    d3.select("div#legend").style("opacity", 1);
+    d3.select("div#ylabel").style("opacity", 1);
+    darkBlue = "darkslateblue";
+    lightGray = d3.rgb(230, 230, 230);
+    darkGray = d3.rgb(200, 200, 200);
+    pink = "hotpink";
+    altpink = "#E9CFEC";
+    purple = "#8C4374";
+    darkRed = "crimson";
+    labelcolor = "black";
+    titlecolor = "blue";
+    maincolor = "blue";
+    nodig = d3.format(".0f");
+    onedig = d3.format(".1f");
+    twodig = d3.format(".2f");
+    nTimes = data.times.length;
+    nInd = data.curves.length;
+
+          debugger;
+
+    phenoList = [];
+    minPhe = 999;
+    maxPhe = -999;
+    avePhe = [];
+    for (i in data.curves) {
+      avePhe[i] = 0;
+      for (j in data.curves[i]) {
+        phe = +data.curves[i][j];
+        if (!isNaN(phe)) {
+          avePhe[i] += phe;
+        }
+        phenoList.push({
+          row: i,
+          col: j,
+          value: phe
+        });
+        if (minPhe > phe && !isNaN(phe)) {
+          minPhe = phe;
+        }
+        if (maxPhe < phe && !isNaN(phe)) {
+          maxPhe = phe;
+        }
+      }
+      avePhe[i] /= nTimes;
+    }
+
+    orderedInd = d3.range(nInd).sort(function(a, b) {
+      if (isNaN(+avePhe[a]) || isNaN(+avePhe[b])) {
+        return 0;
+      }
+
+      if (avePhe[a] < avePhe[b]) {
+        return -1;
+      }
+      if (avePhe[b] < avePhe[a]) {
+        return +1;
+      }
+      return 0;
+    });
+/*
+    indexInd = orderedInd.slice(0);
+    for (i in orderedInd) {
+      indexInd[orderedInd[i]] = i;
+    }
+    */
+    indexInd = d3.range(nInd);
+
+
+
+  
+    pixelsPer = 15; // Will determine size of heatmap cells (image panel) and correspondingly the spacing in the curve panel
+    w = nTimes * pixelsPer;
+    h = [nInd * pixelsPer, 200];
+    pad = {
+      left: 60,
+      top: 15,
+      right: 25,
+      bottom: 40,
+      inner: 0
+    };
+    totalw = w + pad.left + pad.right;
+    totalh = h[0] + h[1] + pad.top * 2 + pad.bottom * 2;
+    svg = d3.select("div#curvesfig").append("svg").attr("height", totalh).attr("width", totalw);
+    image = svg.append("g").attr("id", "imagepanel").attr("transform", "translate(" + pad.left + "," + pad.top + ")");
+    curve = svg.append("g").attr("id", "curvepanel").attr("transform", "translate(" + pad.left + "," + (pad.top * 2 + pad.bottom + h[0]) + ")");
+    image.append("rect").attr("height", h[0]).attr("width", w).attr("fill", "white").attr("stroke", "black").attr("stroke-width", 1);
+    curve.append("rect").attr("height", h[1]).attr("width", w).attr("fill", lightGray).attr("stroke", "black").attr("stroke-width", 1);
+    xScaleImg = d3.scale.ordinal().domain(d3.range(nTimes)).rangePoints([0, pixelsPer * (nTimes - 1) + 1], 0);
+    yScaleImg = d3.scale.ordinal().domain(d3.range(nInd)).rangePoints([0, pixelsPer * (nInd - 1) + 1], 0);
+
+    //  Label the y-axis on the heatmap plot (svg element "image")
+
+    var yAxis = d3.svg.axis()
+        .scale(yScaleImg)
+        .tickFormat(function (i) {
+        return data.labels[i];
+    })
+    .orient("left");
+
+    image.append("g")
+    .attr("class", "y axis")
+    .attr("transform", "translate(0 ,8)")
+    .call(yAxis);
+
+    dif = maxPhe + 45;
+    difdown = -45 - minPhe;
+    if (dif < difdown) {
+      dif = difdown;
+    }
+
+    n_colors = 128;
+    colorseq = (function() {
+      _results = [];
+      for (var _i = 0; 0 <= n_colors ? _i <= n_colors : _i >= n_colors; 0 <= n_colors ? _i++ : _i--){ _results.push(_i);}
+      return _results;
+    }).apply(this);
+    for (i in colorseq) {
+      colorseq[i] /= n_colors;
+    }
+    redblue = [];
+    //  Do the blue to white
+    for (_j = 0, _len = colorseq.length; _j < _len; _j++) {
+      i = colorseq[_j];
+      redblue.push(d3.interpolateRgb("#2166ac", "#f7f7f7")(i));
+    }
+    _ref = colorseq.slice(1);
+    //  Add white to red
+    for (_k = 0, _len1 = _ref.length; _k < _len1; _k++) {
+      i = _ref[_k];
+      redblue.push(d3.interpolateRgb("#f7f7f7", "#b2182b")(i));
+    }
+    //zScaleImg = d3.scale.quantile().domain([-45 - dif, -45 + dif]).range(redblue);
+    zScaleImg = d3.scale.quantile().domain([minPhe, maxPhe]).range(redblue);
+    xScaleCurve = d3.scale.linear().domain([0, d3.max(data.times)]).range([pixelsPer / 2, w - pixelsPer / 2]);
+    yScaleCurve = d3.scale.linear().domain([minPhe, maxPhe]).range([h[1] - pad.inner, pad.inner]);
+
+    xTicks = [];
+    topAxes = image.append("g").attr("id", "topAxes").attr("pointer-events", "none");
+    topAxes.selectAll("empty").data(xTicks).enter().append("line").attr("x1", function(d) {
+      //return xScaleImg(d * 30 - 1) + pixelsPer / 2;
+      return xScaleImg(d - 1) + pixelsPer / 2;
+    }).attr("x2", function(d) {
+      //return xScaleImg(d * 30 - 1) + pixelsPer / 2;
+      return xScaleImg(d - 1) + pixelsPer / 2;
+    }).attr("y1", h[0]).attr("y2", h[0] + pad.bottom * 0.1).attr("stroke", labelcolor);
+    topAxes.selectAll("empty").data(xTicks).enter().append("text").text(function(d) {
+      return d;
+    }).attr("x", function(d) {
+      return xScaleImg(d * 30 - 1) + pixelsPer / 2;
+    }).attr("y", h[0] + pad.bottom * 0.2).attr("fill", labelcolor).attr("text-anchor", "middle").attr("dominant-baseline", "hanging");
+    topAxes.append("text").attr("x", w / 2).attr("y", h[0] + pad.bottom * 0.75).text("Conditions").attr("fill", titlecolor).attr("text-anchor", "middle").attr("dominant-baseline", "hanging");
+
+    //  Y-Axis ticks and labels
+
+    /*
+    
+    topyTicks = [];
+    for (var i = 1; i <= data.labels.length; i++) { topyTicks.push(i); }
+    topAxes.selectAll("empty")
+    .attr("class", "ylabel")
+    .data(topyTicks).enter().append("line").attr("x1", 0).attr("x2", -pad.left * 0.1).attr("y1", function(d) {
+      return yScaleImg(d);
+    })
+    .attr("y2", function(d) {
+      return yScaleImg(d);
+    }).attr("stroke", labelcolor);
+    topAxes.selectAll("empty").data(topyTicks).enter().append("text").text(function(d) {
+      //return d * 1 + 1;
+      return data.labels[d];
+    }).attr("x", -pad.left * 0.2).attr("y", function(d) {
+      return yScaleImg(d);
+    }).attr("fill", labelcolor).attr("text-anchor", "end").attr("dominant-baseline", "middle");
+
+*/
+
+    xloc = -pad.left * 0.75;
+    yloc = h[0] / 2;
+    topAxes.append("text").attr("x", xloc).attr("y", yloc).text("Genes").attr("fill", titlecolor).attr("text-anchor", "middle").attr("transform", "rotate(270," + xloc + "," + yloc + ")");
+    botAxes = curve.append("g").attr("id", "botAxes").attr("pointer-events", "none");
+    botAxes.selectAll("empty").data(xTicks).enter().append("line").attr("x1", function(d) {
+      return xScaleCurve(d * 60);
+    }).attr("x2", function(d) {
+      return xScaleCurve(d * 60);
+    }).attr("y1", h[1]).attr("y2", 0).attr("stroke", "white");
+    botAxes.selectAll("empty").data(xTicks).enter().append("text").text(function(d) {
+      return d;
+    }).attr("x", function(d) {
+      return xScaleCurve(d * 60);
+    }).attr("y", h[1] + pad.bottom * 0.1).attr("fill", labelcolor).attr("text-anchor", "middle").attr("dominant-baseline", "hanging");
+    botAxes.append("text").attr("x", w / 2).attr("y", h[1] + pad.bottom * 0.65).text("Conditions").attr("fill", titlecolor).attr("text-anchor", "middle").attr("dominant-baseline", "hanging");
+    botyTicks = yScaleCurve.ticks(5);
+    botAxes.selectAll("empty").data(botyTicks).enter().append("line").attr("x1", 0).attr("x2", w).attr("y1", function(d) {
+      return yScaleCurve(d);
+    }).attr("y2", function(d) {
+      return yScaleCurve(d);
+    }).attr("stroke", "white");
+    botAxes.selectAll("empty").data(botyTicks).enter().append("text").text(function(d) {
+      return d;
+    }).attr("x", -pad.left * 0.1).attr("y", function(d) {
+      return yScaleCurve(d);
+    }).attr("fill", labelcolor).attr("text-anchor", "end").attr("dominant-baseline", "middle");
+    xloc = -pad.left * 0.65;
+    yloc = h[1] / 2;
+    botAxes.append("text").attr("x", xloc).attr("y", yloc).text("Log Ratio").attr("fill", titlecolor).attr("text-anchor", "middle").attr("transform", "rotate(270," + xloc + "," + yloc + ")");
+    clicked = [];
+    for (i in indexInd) {
+      clicked[i] = false;
+    }
+
+    imgPixels = image.append("g").attr("id", "imgPixels").selectAll("rect").data(phenoList).enter().append("rect").attr("class", "imgPixels").attr("x", function(d) {
+      return xScaleImg(d.col);
+    }).attr("y", function(d) {
+      return yScaleImg(indexInd[d.row]);
+    }).attr("height", pixelsPer).attr("width", pixelsPer).attr("fill", function(d) {
+      return zScaleImg(d.value);
+    }).attr("stroke", function(d) {
+      return zScaleImg(d.value);
+    }) .attr("stroke-width", 0.5).on("mouseover", function(d) {
+      return drawCurve(d.row);
+    })
+    .on("click", function(d) {
+      return clickCurve(d.row);
+    });
+
+    phecurve = function(ind) {
+      return d3.svg.line().x(function(d) {
+        return xScaleCurve(+d);
+      })
+      .y(function(d, di) {
+        return yScaleCurve(+data.curves[ind][di]);
+      })
+      .defined(function(d, di) { return !isNaN(yScaleCurve(+data.curves[ind][di])); }); // To deal with NA's
+    };
+
+    drawCurve = function(ind) {
+      var curInd, thecurve;
+      return 0;  // Stop drawing this curve on mouseover bc it is confusing and annoying
+      if (ind === curInd) {
+        return 0;
+      }
+      curInd = ind;
+      d3.select("g#phecurve").remove();
+      thecurve = curve.append("g").attr("id", "phecurve");
+      thecurve.append("path").attr("id", "phecurve").datum(data.times).attr("d", phecurve(ind)).attr("stroke", darkBlue).attr("fill", "none").attr("stroke-width", "2");
+      //return thecurve.append("text").datum(ind).text("line " + (ind * 1 + 1)).attr("x", xScaleCurve(7 * 60 + 10)).attr("y", (yScaleCurve(0) + yScaleCurve(-20)) / 2).attr("text-anchor", "start").attr("fill", darkBlue).attr("dominant-baseline", "middle");
+
+      //return thecurve.append("text").datum(ind).text("gene " + data.labels[ind]).attr("x", xScaleCurve(0)).attr("y", (yScaleCurve(0) + yScaleCurve(-20)) / 2).attr("text-anchor", "start").attr("fill", darkBlue).attr("dominant-baseline", "left");
+      return thecurve.append("text").datum(ind).attr("x", xScaleCurve(0)).attr("y", (yScaleCurve(0) + yScaleCurve(-20)) / 2).attr("text-anchor", "start").attr("fill", darkBlue).attr("dominant-baseline", "left");
+    };
+
+
+    clickColors = ["blue", "red", "green", "orange", "black"];  
+    clickCurve = function(ind) {
+      var curcolor, thecurve;
+      
+      if (clicked[ind]) {
+        clicked[ind] = false;
+        d3.select("g#phecurve_" + ind).remove();
+        d3.select("rect#pherect_" + ind).remove();
+        return drawCurve(ind);  // won't happen now
+      } 
+      else {
+        
+        
+        d3.select("path#phecurve").remove();
+        curcolor = clickColors.shift();
+        clickColors.push(curcolor);
+        clicked[ind] = true;
+        thecurve = curve.append("g").attr("id", "phecurve_" + ind);
+        thecurve.append("path").datum(data.times).attr("d", phecurve(ind)).attr("stroke", curcolor).attr("fill", "none").attr("stroke-width", 2);
+        //.defined(function(ind) { return !isNaN(phecurve(ind) ); });
+
+      var curvedata = [];
+      for (var i =  0; i < phenoList.length; i++) {
+        if (+phenoList[i].row == ind) {
+          curvedata.push(+phenoList[i].value);
+        }
+      };
+
+/*
+      thecurve.selectAll('.point')
+      .data(curvedata)
+      .enter().append("svg:circle")
+      .attr("class", "point")
+      .attr("fill", curcolor)
+      .attr("r", 2)
+      //.attr("cx", xx)
+      //.attr("cy", yy)
+      .attr("cy", function (d, i) { return yScaleCurve(d); })
+      //.defined(function(d) { return !isNaN(yScaleCurve(d) ); })
+      //.defined(function(d, i) { return !isNaN(+d[i]); })
+      .attr("cx", function (d, i) { return xScaleCurve(i); })
+      .on('mouseover', function() { return d3.select(this).attr('r', 4); } ) // zoom in to datapoint
+      .on('mouseout',  function() { return d3.select(this).attr('r', 2); } );
+      //.append("svg:title")
+      //.text(function(d) { return d; });
+  */    
+
+
+      // zoom out of datapoint
+      //.defined(function(d, i) { return !isNaN(+d[i]); });
+      //.on('click', function (d, i) { console.log (d[i]); };
+
+        //image.selectAll('.rect')
+        //.data(data.labels)
+        //.enter().append("rect").attr("id", "pherect_" + ind)
+        //.append("svg:title")
+        //.text("gene " + data.labels[ind]);
+
+        return image.append("rect").attr("id", "pherect_" + ind).attr("x", 0).attr("width", w).attr("y", yScaleImg(indexInd[ind])).attr("height", pixelsPer).attr("fill", "none").attr("stroke", curcolor).attr("stroke-width", 1).attr("pointer-events", "none");
+      }
+    };
+    //randomInd = Math.floor(Math.random() * nInd);
+    //drawCurve(randomInd);
+
+    curInd = randomInd;
+    yVals = (function() {
+      _results1 = [];
+      for (var _l = 0, _ref1 = h[1]; 0 <= _ref1 ? _l < _ref1 : _l > _ref1; 0 <= _ref1 ? _l++ : _l--){ _results1.push(_l); }
+      return _results1;
+    }).apply(this);
+
+    for (i in yVals) {
+      yVals[i] = minPhe + (maxPhe - minPhe) * i / h[1];
+    }
+
+    xPos = w + 10;
+    return curve.append("g").attr("id", "colorscale").selectAll("empty").data(yVals).enter().append("rect").attr("x", xPos).attr("width", pad.right - 10).attr("y", function(d) {
+      return yScaleCurve(d);
+    }).attr("height", 1).attr("fill", function(d) {
+      return zScaleImg(d);
+    }).attr("stroke", function(d) {
+      return zScaleImg(d);
+    }).attr("stroke-width", 0.5);
+
+    
+
+
+        // add legend
+  var legend = svg.append("g")
+    .attr("class", "legend")
+    .attr("x", 0)
+    .attr("y", h+10)
+    .attr("height", 100)
+    .attr("width", 100);
+
+legend.append("rect")
+      /*...*/
+      .style("fill", function(d) { 
+         // d <---- is undefined
+         return clickColors[0];
+      });
+
+      legend.selectAll('rect')
+      .data([1,2,3,4,5])
+      .enter()
+      .append("rect")
+      .attr("x", w - 65)
+      .attr("y", function(d, i){ return i *  20;})
+      .attr("width", 10)
+      .attr("height", 10)
+      .style("fill", function(d) { 
+         var color = clickColors[0];
+         return color;
+      });
+
+
+  };
+
+
+
+  //legend.append("text")
+    //.attr("x", w - 65)
+    //.attr("y", 25)
+    //.text(function(d) { return color_hash[dataset.indexOf(d)][0] + ": " + d; });
+  </script>
+
+
+</body>
+</html>

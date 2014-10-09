@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Home</title>
+
+<body>
+<form action="" method=post enctype=multipart/form-data>
+{% if options %}
+<select name="selectopt">
+  {% for opt in options %}
+  <option name="option" value="{{opt}}">{{opt}}</option><br>
+  {% endfor %}
+</select>
+  {% endif %}<br>
+  <input type="submit" name="submit" id="button" value="Go to plot"/><br><br><br><br>
+</form>
+</body>
+</html>
