@@ -20,7 +20,7 @@ def displays(org):
 
 	options = []
 	if org == 'thaps':
-		options = ['Violin Plot'] #, 'Cluster Lineplot']
+		options = ['Violin Plot', 'Cluster Lineplot']
 	if org == 'mtb':
 		options = ['Cluster Heatmap', 'Cluster Lineplot']
 	if request.method == 'POST':
